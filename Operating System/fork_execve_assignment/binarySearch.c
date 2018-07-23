@@ -40,7 +40,7 @@ int *string_to_intArray(char *str)
     i++;
     token = strtok(NULL, " ");
   }
-  no = i--;
+  no = i;
   return arr;
 }
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
   printf("Accepted String by Second Program : %s\n", argv[0]);
   array = string_to_intArray(argv[0]);
-  
+
   printf("Integer Array: ");
   for (int i = 0; i < no; i++)
   {
