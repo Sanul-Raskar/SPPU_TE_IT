@@ -12,32 +12,65 @@
 #include<pthread.h>
 #include<stdlib.h>
 
-void printMatrix(int mat[3][3]);
-
-int A[3][3], B[3][3], C[3][3],
-        A[3][3] = {{1, 1, 1},
-                   {1, 1, 1},
-                   {1, 1, 1}},
-        B[3][3] = {{1, 1, 1},
-                   {1, 1, 1},
-                   {1, 1, 1}},
-        C[3][3] = {{0, 0, 0},
-                   {0, 0, 0},
-                   {0, 0, 0}}, thread_counter = 0;
-
-
+int **mat1, **mat2, **mat3, r1, c1, r2, c2, thread_counter = 0;
 typedef struct index {
     int i, j;
 } index;
 
-void printMatrix(int mat[3][3]) {
+/*Function Prototypes*/
+int **memoryAllocation(int r, int c, int flag);
+void printMatrix(int **mat, int r, int c);
+void *multiplication(void *ind);
+pthread_t *threadArrayAlloaction(int r,int c);
+void deallocateMemory(int **A,int Ar,int **B,int Br,int **C,int Cr,pthread_t *D);
 
-    int a, b;
+
+int **memoryAllocation(int r, int c, int flag) {
+    int **M;
+    M = (int **) malloc(r * sizeof(int *));
+    for (int i = 0; i < r; i++)
+        *(M + i) = (int *) malloc(c * sizeof(int *));
+
+    for (int i = 0; i < r; i++)
+        for (int j = 0; j < c; j++) {
+            if (flag == 0)
+                scanf("%d", (*(M + i) + j));
+            else
+                *(*(M + i) + j) = 0;
+        }
+
+    return M;
+}
+
+pthread_t *threadArrayAlloaction(int r,int c){
+    int size;
+    size = r*c;
+    pthread_t *ptr = (pthread_t*)calloc(size, sizeof(pthread_t));
+    return ptr;
+}
+
+void deallocateMemory(int **A,int Ar,int **B,int Br,int **C,int Cr,pthread_t *D){
+    for(int i = 0; i < Ar; i++)
+        free(A[i]);
+    free(A);
+
+    for(int i = 0; i < Br; i++)
+        free(B[i]);
+    free(B);
+
+    for(int i = 0; i < Cr; i++)
+        free(C[i]);
+    free(C);
+
+    free(D);
+}
+void printMatrix(int **mat, int r, int c) {
+
     printf("\n");
-    for (a = 0; a < 3; a++) {
+    for (int i = 0; i < r; i++) {
         printf("\n");
-        for (b = 0; b < 3; b++) {
-            printf("%d  ", mat[a][b]);
+        for (int j = 0; j < c; j++) {
+            printf("%d  ", *(*(mat + i) + j));
         }
     }
     printf("\n");
@@ -46,154 +79,120 @@ void printMatrix(int mat[3][3]) {
 void *multiplication(void *ind) {
     int count, result = 0;
     index *indices = (index *) ind;
-    printf("\nMatrix Multiplication for indices i=%d j=%d \n", indices->i, indices->j);
-
-    for (count = 0; count < 3; count++) {
-        printf("A[%d][%d] * B[%d][%d]\n", indices->i, count, count, indices->j);
-        result += A[indices->i][count] * B[count][indices->j];
-    }
-    printf("\n\n");
+    printf("Thread in execution with Thread ID : %ld \n",pthread_self());
+    for (count = 0; count < r2; count++)
+        result += (*(*(mat1 + indices->i) + count)) * (*(*(mat2 + count) + indices->j));
     pthread_exit((void *) result);
 }
 
 int main() {
-    pthread_t threadID[10];
-    int x, y;
+    pthread_t *threadID;
+    int x, y, final;
     index *ij_values;
-    int final;
     void *result;
 
-    for (x = 0; x < 3; x++)
-        for (y = 0; y < 3; y++) {
-            ij_values = (index *) malloc(sizeof(index));
-            ij_values->i = x;
-            ij_values->j = y;
+    printf("Enter the number of row and col for matrix 1\n");
+    scanf("%d %d", &r1, &c1);
+    printf("Enter the number of row and col for matrix 2\n");
+    scanf("%d %d", &r2, &c2);
 
-            printf("\nThread created for ID %d\n", thread_counter);
-            pthread_create(&threadID[thread_counter++], NULL, multiplication, (void *) ij_values);
-        }
+    if (c1 == r2) {
+        printf("Enter elements for matrix 1\n");
+        mat1 = memoryAllocation(r1, c1, 0);
+        printf("Enter elements for matrix 2\n");
+        mat2 = memoryAllocation(r2, c2, 0);
+        mat3 = memoryAllocation(r1, c2, 1);
+        threadID = threadArrayAlloaction(r1,c2);
 
-    thread_counter = 0;
-    for (x = 0; x < 3; x++)
-        for (y = 0; y < 3; y++) {
-            pthread_join(threadID[thread_counter++], &result);
-            final = (int *) result;
-            C[x][y] = final;
-        }
+        for (x = 0; x < r1; x++)
+            for (y = 0; y < c2; y++) {
+                ij_values = (index *) malloc(sizeof(index));
+                ij_values->i = x;
+                ij_values->j = y;
 
-    printf("\nMatrix A :");
-    printMatrix(A);
-    printf("\nMatrix B :");
-    printMatrix(B);
-    printf("\nResultant Matrix C :");
-    printMatrix(C);
+                printf("\nThread created count -> %d\n", thread_counter);
+                pthread_create((threadID+thread_counter), NULL, multiplication, (void *) ij_values);
+                thread_counter++;
+            }
+
+        thread_counter = 0;
+        for (x = 0; x < r1; x++)
+            for (y = 0; y < c2; y++) {
+                pthread_join(threadID[thread_counter++], &result);
+                final = (int *) result;
+                *(*(mat3 + x) + y) = final;
+            }
+
+        printf("\nMatrix A :\n");
+        printMatrix(mat1, r1, c1);
+        printf("\nMatrix B :\n");
+        printMatrix(mat2, r2, c2);
+        printf("\nResultant Matrix C :\n");
+        printMatrix(mat3, r1, c2);
+
+        deallocateMemory(mat1,r1,mat2,r2,mat3,r1,threadID);
+
+    } else
+        printf("Matrix multiplication not possible\n");
+
     return 0;
 }
 
-/*Output*/
-
+/*OUTPUT*/
 /*
- sanul@sanul-HP-Notebook:~/CLionProjects/multithread_matrix$ ./a.out
+sanul@sanul-HP-Notebook:~/CLionProjects/multithread_matrix$ ./a.out
+Enter the number of row and col for matrix 1
+2
+3
+Enter the number of row and col for matrix 2
+3
+2
+Enter elements for matrix 1
+1
+1
+1
+1
+1
+1
+Enter elements for matrix 2
+1
+1
+1
+1
+1
+1
 
-Thread created for ID 0
+Thread created count -> 0
 
-Thread created for ID 1
+Thread created count -> 1
+Thread in execution with Thread ID : 139923076720384
 
-Matrix Multiplication for indices i=0 j=0
-A[0][0] * B[0][0]
+Thread created count -> 2
+Thread in execution with Thread ID : 139923068327680
 
-Thread created for ID 2
-A[0][1] * B[1][0]
-A[0][2] * B[2][0]
-
-
-
-Thread created for ID 3
-
-Matrix Multiplication for indices i=0 j=1
-A[0][0] * B[0][1]
-A[0][1] * B[1][1]
-A[0][2] * B[2][1]
-
-
-
-Matrix Multiplication for indices i=0 j=2
-A[0][0] * B[0][2]
-A[0][1] * B[1][2]
-A[0][2] * B[2][2]
-
-Thread created for ID 4
-
-
-
-Thread created for ID 5
-
-Matrix Multiplication for indices i=1 j=0
-A[1][0] * B[0][0]
-
-Thread created for ID 6
-A[1][1] * B[1][0]
-A[1][2] * B[2][0]
-
-
-
-Matrix Multiplication for indices i=1 j=2
-
-Matrix Multiplication for indices i=2 j=0
-
-Thread created for ID 7
-A[1][0] * B[0][2]
-A[1][1] * B[1][2]
-A[1][2] * B[2][2]
-
-
-A[2][0] * B[0][0]
-
-Thread created for ID 8
-
-Matrix Multiplication for indices i=1 j=1
-A[1][0] * B[0][1]
-A[1][1] * B[1][1]
-
-Matrix Multiplication for indices i=2 j=1
-A[2][0] * B[0][1]
-A[2][1] * B[1][1]
-A[2][2] * B[2][1]
-
-
-
-Matrix Multiplication for indices i=2 j=2
-A[2][0] * B[0][2]
-A[2][1] * B[1][2]
-A[2][2] * B[2][2]
-
-
-A[2][1] * B[1][0]
-A[2][2] * B[2][0]
-
-
-A[1][2] * B[2][1]
-
-
+Thread created count -> 3
+Thread in execution with Thread ID : 139923059934976
+Thread in execution with Thread ID : 139923051542272
 
 Matrix A :
 
-1  1  1
+
 1  1  1
 1  1  1
 
 Matrix B :
 
-1  1  1
-1  1  1
-1  1  1
+
+1  1
+1  1
+1  1
 
 Resultant Matrix C :
 
-3  3  3
-3  3  3
-3  3  3
+
+3  3
+3  3
 sanul@sanul-HP-Notebook:~/CLionProjects/multithread_matrix$
 
- * */
+ */
 
