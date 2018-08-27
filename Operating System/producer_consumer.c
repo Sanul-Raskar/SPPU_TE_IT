@@ -15,7 +15,7 @@
 #include <stdbool.h>
 
 
-#define BUFFER_SIZE 10
+#define BUFFER_SIZE 20
 #define RAND_DIVISOR 10000000
 
 int buffer[BUFFER_SIZE];
